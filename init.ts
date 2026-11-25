@@ -1,3 +1,4 @@
 // @preview-file on clear
-import {} from 'Dora';
+import { startTitleScene } from 'Script/TitleScene';
 
+startTitleScene();
