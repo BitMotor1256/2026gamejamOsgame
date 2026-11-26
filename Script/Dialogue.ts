@@ -540,33 +540,94 @@ export function createDialogue(root: Node.Type, opts: DialogueOpts) {
 	pill.position = Vec2(SAY.x + 16, H - (SAY.y - 21));
 	pill.addTo(sayGroup);
 
-	const whoLb = Label(MED + ';15;true')!;
+	// 三处小字（说话人 / 序号 / 点击继续）原来没做超采样：按 15~16px 直接烘，
+	// 再被卡片整体缩到 0.84 左右，边缘就糊了。统一 2 倍烘、0.5 缩放。
+	const whoLb = Label(MED + ';' + Math.round(15 * SS) + ';true')!;
 	whoLb.color = C_CARD;
 	whoLb.anchor = Vec2(0.5, 0.5);
+	whoLb.scaleX = 1 / SS;
+	whoLb.scaleY = 1 / SS;
 	whoLb.position = Vec2(SAY.x + 74, H - (SAY.y + 1));
-	whoLb.spacing = 7;
+	whoLb.spacing = 7 * SS;
 	whoLb.text = opts.speaker;
 	whoLb.addTo(sayGroup);
 
-	// 正文：Medium（Regular 的细横在 SDF 下会被抹平）
-	// 行距 14：32px 字 + 14 = 46 一行，三行 138，正好落在 196 高的卡片里（剩 17 给底部）
-	const txLb = text(sayGroup, MED, 32, C_INK, SAY.x + PAD, SAY.y + 56,
-		(SAY.w - PAD * 2) * CHAR_ADV, 14, 0);
-	txLb.text = '';
+	/* 正文：逐字一个常驻 Label（和第二关关后科普页同一套）。
+	   原来是一整块 Label 每帧改 text —— Dora 每次赋值都重建纹理，
+	   打字过程中字会抖、边缘发虚，这就是「前面的对话看着糊」的原因。
+	   逐字之后纹理只建一次，只切 visible。
+	   字体也用回 Regular，和科普页一致（SemiBold 在小字号下发闷）。 */
+	const TX_SIZE = 32, TX_STEP = TX_SIZE * 0.78 + 1, TX_LINE = TX_SIZE + 14;
+	const TX_COLS = Math.floor((SAY.w - PAD * 2) / TX_STEP);
+	const TX_N = TX_COLS * 3;
+	const txChars: Label.Type[] = [];
+	for (let i = 0; i < TX_N; i++) {
+		const lb = Label(REG + ';' + Math.round(TX_SIZE * SS) + ';true')!;
+		lb.color = C_INK;
+		lb.anchor = Vec2(0, 1);
+		lb.scaleX = 1 / SS;
+		lb.scaleY = 1 / SS;
+		lb.visible = false;
+		lb.addTo(sayGroup);
+		txChars.push(lb);
+	}
+	let txCount = 0;
 
-	const seqLb = Label(REG + ';15;true')!;
+	// 按 UTF-8 首字节切字（TSTL 的 string 是字节串，直接 slice 会切在半个汉字上）
+	const toChars = (str: string): string[] => {
+		const out: string[] = [];
+		let i = 0;
+		while (i < str.length) {
+			const c = str.charCodeAt(i);
+			let n = 1;
+			if (c >= 0xF0) { n = 4; }
+			else if (c >= 0xE0) { n = 3; }
+			else if (c >= 0xC0) { n = 2; }
+			out.push(str.substr(i, n));
+			i += n;
+		}
+		return out;
+	};
+
+	// 排一句：算换行、摆位置，然后全部藏起来等打字机
+	const layoutLine = (str: string): void => {
+		const chars = toChars(str);
+		txCount = Math.min(TX_N, chars.length);
+		for (let i = 0; i < TX_N; i++) {
+			const lb = txChars[i];
+			if (i >= txCount) { lb.visible = false; continue; }
+			const col = i % TX_COLS;
+			const row = Math.floor(i / TX_COLS);
+			lb.text = chars[i];
+			lb.position = Vec2(SAY.x + PAD + col * TX_STEP, H - (SAY.y + 56 + row * TX_LINE));
+			lb.visible = false;
+		}
+	};
+
+	const showChars = (n: number): void => {
+		for (let i = 0; i < txCount; i++) { txChars[i].visible = (i < n); }
+	};
+	const setTxOpacity = (a: number): void => {
+		for (let i = 0; i < txCount; i++) { txChars[i].opacity = a; }
+	};
+
+	const seqLb = Label(REG + ';' + Math.round(15 * SS) + ';true')!;
 	seqLb.color = Color(76, 99, 87, 190);
 	seqLb.outlineColor = Color(76, 99, 87, 190);
 	seqLb.outlineWidth = 0.04;
 	seqLb.anchor = Vec2(1, 1);
+	seqLb.scaleX = 1 / SS;
+	seqLb.scaleY = 1 / SS;
 	seqLb.position = Vec2(SAY.x + SAY.w - 22, H - (SAY.y + 26));
 	seqLb.addTo(sayGroup);
 
-	const tipLb = Label(REG + ';16;true')!;
+	const tipLb = Label(REG + ';' + Math.round(16 * SS) + ';true')!;
 	tipLb.color = Color(36, 73, 70, 175);
 	tipLb.outlineColor = Color(36, 73, 70, 175);
 	tipLb.outlineWidth = 0.04;
 	tipLb.anchor = Vec2(1, 1);
+	tipLb.scaleX = 1 / SS;
+	tipLb.scaleY = 1 / SS;
 	tipLb.position = Vec2(SAY.x + SAY.w - 22, H - (SAY.y + SAY_H - 16));
 	tipLb.text = '点击继续';
 	tipLb.addTo(sayGroup);
@@ -614,8 +675,9 @@ export function createDialogue(root: Node.Type, opts: DialogueOpts) {
 		const L = opts.lines[i];
 		target = L.text;
 		shown = 0;
-		txLb.text = '';
-		txLb.opacity = 0;
+		layoutLine(target);
+		showChars(0);
+		setTxOpacity(0);
 		seqLb.text = seqText(i);
 		setFx(L.fx);
 		setFace(L.ex);
@@ -631,9 +693,9 @@ export function createDialogue(root: Node.Type, opts: DialogueOpts) {
 		}
 		if (st === S_TYPE) {
 			// 正在打字：一次显示完整句
-			shown = target.length;
-			txLb.text = target;
-			txLb.opacity = 1;
+			shown = txCount;
+			showChars(txCount);
+			setTxOpacity(1);
 			st = S_HOLD;
 			return;
 		}
@@ -743,25 +805,24 @@ export function createDialogue(root: Node.Type, opts: DialogueOpts) {
 
 		} else if (st === S_TYPE) {
 			layer.opacity = 1;
-			txLb.opacity = Math.min(1, t / FADE_IN_LINE);
-			// TSTL 的 string.length / substring 都按【字节】走，中文一字 3 字节。
-			// 按字符数切会切在半个汉字上，切出来是空串 —— 所以按 3 字节一步。
-			const n = Math.min(target.length, Math.max(0, Math.floor((t - 0.14) / CPS)) * CH_BYTES);
+			setTxOpacity(Math.min(1, t / FADE_IN_LINE));
+			// 一个字一个字地「点亮」：只切 visible，不重建纹理
+			const n = Math.min(txCount, Math.max(0, Math.floor((t - 0.14) / CPS)));
 			if (n > shown) {
 				shown = n;
-				txLb.text = target.substring(0, n);
+				showChars(n);
 			}
-			if (t > 0.14 && shown >= target.length) {
-				txLb.text = target;
+			if (t > 0.14 && shown >= txCount) {
+				showChars(txCount);
 				st = S_HOLD;
 			}
 
 		} else if (st === S_HOLD) {
 			layer.opacity = 1;
-			txLb.opacity = 1;
+			setTxOpacity(1);
 
 		} else if (st === S_NEXT) {
-			txLb.opacity = Math.max(0, 1 - t / FADE_OUT_LINE);
+			setTxOpacity(Math.max(0, 1 - t / FADE_OUT_LINE));
 			if (t >= FADE_OUT_LINE) { startLine(idx + 1); }
 
 		} else if (st === S_OUT) {

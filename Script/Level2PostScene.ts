@@ -120,7 +120,7 @@ export function startLevel2Post(onDone: () => void): PostLineScene {
 	block(root, SC_X + SC_W - 3, SC_Y, 3, SC_H, C_INK, 1);
 	// 「图一」角标
 	block(root, SC_X - 3, SC_Y - 3, 74, 30, C_VERM, 1);
-	const tag = label(root, FONT_B, 18, C_INK2, SC_X + 12, SC_Y + 52, 0, 0.4);
+	const tag = label(root, FONT_B, 17, C_CARD, SC_X + 14, SC_Y + 24, 0, 1.6);
 	tag.text = '图一';
 
 
@@ -201,7 +201,7 @@ export function startLevel2Post(onDone: () => void): PostLineScene {
 
 	// 姓名牌
 	block(root, 136, 509, 96, 34, C_VERM, 1);
-	const pill = label(root, FONT_B, 15, C_CARD, 184, 534, 0.5, 4.2);
+	const pill = label(root, FONT_B, 17, C_CARD, 184, 535, 0.5, 4.2);
 	pill.text = '王 梓';
 
 	// 打字机不用「每帧改一个 Label 的 text」——那样每秒重建 31 次纹理，肉眼会闪。
@@ -299,6 +299,8 @@ export function startLevel2Post(onDone: () => void): PostLineScene {
 	};
 
 	let state = 0;   // 0 进行中 / 1 入场 / 2 结束
+	let time = 0;
+	let born = 0;    // 出生后多久：用来吃掉「创建它的那一次按键」
 
 	/* 输入：整页都能点 */
 	frame.input.onTapped((): boolean => { tap(); return true; });
@@ -312,16 +314,23 @@ export function startLevel2Post(onDone: () => void): PostLineScene {
 	   P = 跳过整页（和对话/玩法里 P 的语义一致：「跳过」不是「暂停」）；
 	   空格 / 回车 = 逐句推进，和点击等价。 */
 	root.onKeyDown((key: KeyName): boolean => {
-		if (key === KeyName.P) { endAll(); return true; }
+		if (key === KeyName.P) {
+			// 上一层的 onKeyDown 和这一层的会同时收到同一次按键：
+			// 上层把结算页切成本页，本页又立刻把自己跳掉 —— 表现就是「按 P 跳没了」。
+			// 出生 0.35s 内不吃 P。
+			if (born < 0.35) { return true; }
+			endAll();
+			return true;
+		}
 		if (key === KeyName.Space || key === KeyName.Return) { tap(); return true; }
 		return false;
 	});
 
 	/* ══════════ 每帧：打字机 ══════════ */
 	let acc = 0;
-	let time = 0;
 	const update = (dt: number): void => {
 		time += dt;
+		born += dt;
 		// 立绘呼吸：和 HTML 的 float 4.2s / 2.4px 对齐
 		const bob = Math.sin(time * 1.5) * 2.4;
 		// 打字时轻微点头（HTML 是 talk 动画，56% 左右各晃一点）

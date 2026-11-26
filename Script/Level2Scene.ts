@@ -1,7 +1,7 @@
 // 第二关 · 砻糠计
 // 目前只有关前 10 句（音游玩法还没接）。
 // 外壳、对白、输入、跳过键都和第一关共用：SceneFrame + Dialogue。
-import { KeyName } from 'Dora';
+import { KeyName, Director } from 'Dora';
 import { createDialogue } from 'Script/Dialogue';
 import { createSceneFrame } from 'Script/SceneFrame';
 import { LEVEL2_INTRO, LEVEL2_SPOTS } from 'Script/Story';
@@ -9,6 +9,8 @@ import { createLevel2Play } from 'Script/Level2Play';
 import { H } from 'Script/SceneFrame';
 import { backToTitle } from 'Script/Nav';
 import { startLevel2Post } from 'Script/Level2PostScene';
+import { startLevel3Pre } from 'Script/Level3PreScene';
+import { startLevel3 } from 'Script/Level3Play';
 
 // startAt：调试后门，直接从第 N 句起（0 基），截图核对标注时不用一句句点
 // mode：调试后门 'card' 跳过对话进标题卡 / 'play' 再跳过标题卡直接对局（此时 startAt 变成拍数）
@@ -43,24 +45,25 @@ export function startLevel2(startAt?: number, mode?: string): void {
 	};
 
 	// 音游：糠块从梁下落进砻口，敲漏了疑心就涨
+	// 收束之后的唯一出口：关后科普页 → 第三关关前页 → 第三关玩法。
+	// onFinish / onNext 都走这里，避免「一条路有下文、另一条路是空白」
+	const goPost = (): void => {
+		if (phase === 3) { return; }   // 已经交接给科普页，重复调用直接忽略
+		if (play !== undefined) { play.destroy(); play = undefined; }
+		frame.destroy();
+		phase = 3;   // 本层的键盘从此不响应，否则按 P 会再开一个科普页
+		startLevel2Post((): void => {
+			startLevel3Pre((): void => {
+				startLevel3();   // 第三关玩法
+			});
+		});
+	};
+
 	const startPlay = (): void => {
 		phase = 1;
 		play = createLevel2Play(frame.inner, {
-			onFinish: (): void => {
-				if (play !== undefined) {
-					play.destroy();
-					play = undefined;
-				}
-				startEnd();
-			},
-			onNext: (): void => {
-				// 结算页「好」→ 关后科普页（打字讲解）→ 下一关
-				if (play !== undefined) { play.destroy(); play = undefined; }
-				frame.destroy();
-				startLevel2Post((): void => {
-					print('[Level2] 关后科普看完 → 第三关（引流）尚未接入');
-				});
-			},
+			onFinish: (): void => { goPost(); },
+			onNext: (): void => { goPost(); },
 			onRestart: (): void => {
 				if (play !== undefined) { play.destroy(); play = undefined; }
 				frame.destroy();
@@ -78,9 +81,12 @@ export function startLevel2(startAt?: number, mode?: string): void {
 		});
 	};
 
+	// 兜底：正常流程里不会走到（收束页的出口已经收敛到 goPost），
+	// 留一个安全出口，别再出现「打完一片空白」
 	const startEnd = (): void => {
 		phase = 2;
 		print('[Level2] 一夜过去了');
+		goPost();
 	};
 
 	// 测试用：P 跳过当前这一段
@@ -92,8 +98,11 @@ export function startLevel2(startAt?: number, mode?: string): void {
 		} else if (phase === 1) {
 			if (play !== undefined) { play.skip(); }
 		} else if (phase === 2) {
-			if (play !== undefined) { play.tapAt(232, 690); }
+			// phase 2 时 play 已经被销毁了，原来那个 play.tapAt(232,690) 是空调用。
+			// 直接走出口
+			goPost();
 		}
+		// phase 3 = 已交接给科普页 / 第三关，本层不再响应任何跳过
 	};
 
 	const advance = (): void => {

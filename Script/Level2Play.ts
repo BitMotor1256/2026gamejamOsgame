@@ -1646,7 +1646,8 @@ export function createLevel2Play(parent: Node.Type, opts: Level2PlayOpts): Level
 				const bi = endBtnAt(x, y);
 				if (bi === 0) { if (opts.onNext !== undefined) { opts.onNext(); } return true; }
 				if (bi === 1) { if (opts.onRestart !== undefined) { opts.onRestart(); } return true; }
-				if (endT > 1.2 && !finished) { finished = true; opts.onFinish(); }
+				// 空白处不吃动作。原来这里 1.2s 后走 onFinish，而 onFinish 之后
+				// 没有下一站——点偏一点就把整关打成空白页
 				return true;
 			}
 			if (state !== 1) { return false; }
@@ -1661,9 +1662,14 @@ export function createLevel2Play(parent: Node.Type, opts: Level2PlayOpts): Level
 		},
 		hit: (lane: number): void => { hit(lane); },
 		skip: (): void => {
+			// 暂停 / 设置面板开着时按 P，先收掉它们，否则会盖在收束页上
+			if (paused) { paused = false; pauseRoot.visible = false; Audio.setPauseAllCurrent(false); }
+			if (showSet) { showSet = false; setRoot.visible = false; }
 			if (state === 0) { beginPlay(); return; }
 			if (state === 2) {
-				if (!finished) { finished = true; opts.onFinish(); }
+				// 收束页的「跳过」= 翻到下一页（科普），不是结束到一片空白。
+				// 原来走的是 onFinish，而第二关场景收到 onFinish 后只 print 一行就没了
+				if (opts.onNext !== undefined) { opts.onNext(); }
 				return;
 			}
 			state = 2;

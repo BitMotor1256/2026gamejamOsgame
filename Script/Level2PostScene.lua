@@ -192,12 +192,12 @@ function ____exports.startLevel2Post(onDone) -- 36
 	local tag = label( -- 123
 		root, -- 123
 		FONT_B, -- 123
-		18, -- 123
-		C_INK2, -- 123
-		SC_X + 12, -- 123
-		SC_Y + 52, -- 123
+		17, -- 123
+		C_CARD, -- 123
+		SC_X + 14, -- 123
+		SC_Y + 24, -- 123
 		0, -- 123
-		0.4 -- 123
+		1.6 -- 123
 	) -- 123
 	tag.text = "图一" -- 124
 	local marks = {mill = {}, three = {}, flow = {}, grain = {}} -- 131
@@ -513,10 +513,10 @@ function ____exports.startLevel2Post(onDone) -- 36
 	local pill = label( -- 204
 		root, -- 204
 		FONT_B, -- 204
-		15, -- 204
+		17, -- 204
 		C_CARD, -- 204
 		184, -- 204
-		534, -- 204
+		535, -- 204
 		0.5, -- 204
 		4.2 -- 204
 	) -- 204
@@ -698,67 +698,72 @@ function ____exports.startLevel2Post(onDone) -- 36
 		end -- 298
 	end -- 291
 	state = 0 -- 301
-	frame.input:onTapped(function() -- 304
-		tap() -- 304
-		return true -- 304
-	end) -- 304
-	showLine(0) -- 307
-	state = 0 -- 308
-	root:onKeyDown(function(key) -- 314
-		if key == "P" then -- 314
-			endAll() -- 315
-			return true -- 315
-		end -- 315
-		if key == "Space" or key == "Return" then -- 315
-			tap() -- 316
-			return true -- 316
-		end -- 316
-		return false -- 317
-	end) -- 314
-	local acc = 0 -- 321
-	local time = 0 -- 322
-	local function update(dt) -- 323
-		time = time + dt -- 324
-		local bob = math.sin(time * 1.5) * 2.4 -- 326
-		local sway = typing and math.sin(time * 11) * 1.1 or 0 -- 328
-		for k in pairs(faces) do -- 329
-			do -- 329
-				local sp = faces[k] -- 330
-				if not sp.visible then -- 330
-					goto __continue54 -- 331
-				end -- 331
-				sp.position = Vec2(WZ_X + sway, H - WZ_Y + bob) -- 332
-			end -- 332
-			::__continue54:: -- 332
-		end -- 332
-		if not typing or idx < 0 then -- 332
-			return -- 334
-		end -- 334
-		typed = typed + dt * 31 -- 335
-		if typed >= textLen then -- 335
-			finishTyping() -- 336
-			return -- 336
-		end -- 336
-		local n = math.floor(typed) -- 337
-		do -- 337
-			local k = 0 -- 339
-			while k < n do -- 339
-				txChars[k + 1].visible = true -- 339
-				k = k + 1 -- 339
-			end -- 339
-		end -- 339
-		acc = acc + dt -- 340
-	end -- 323
-	root:schedule(function(dt) -- 342
-		update(dt) -- 342
-		return false -- 342
-	end) -- 342
-	return { -- 344
-		root = root, -- 345
-		close = function() -- 346
-			frame:destroy() -- 346
-		end, -- 346
-		isDone = function() return state == 2 end -- 347
-	} -- 347
+	local time = 0 -- 302
+	local born = 0 -- 303
+	frame.input:onTapped(function() -- 306
+		tap() -- 306
+		return true -- 306
+	end) -- 306
+	showLine(0) -- 309
+	state = 0 -- 310
+	root:onKeyDown(function(key) -- 316
+		if key == "P" then -- 316
+			if born < 0.35 then -- 316
+				return true -- 321
+			end -- 321
+			endAll() -- 322
+			return true -- 323
+		end -- 323
+		if key == "Space" or key == "Return" then -- 323
+			tap() -- 325
+			return true -- 325
+		end -- 325
+		return false -- 326
+	end) -- 316
+	local acc = 0 -- 330
+	local function update(dt) -- 331
+		time = time + dt -- 332
+		born = born + dt -- 333
+		local bob = math.sin(time * 1.5) * 2.4 -- 335
+		local sway = typing and math.sin(time * 11) * 1.1 or 0 -- 337
+		for k in pairs(faces) do -- 338
+			do -- 338
+				local sp = faces[k] -- 339
+				if not sp.visible then -- 339
+					goto __continue55 -- 340
+				end -- 340
+				sp.position = Vec2(WZ_X + sway, H - WZ_Y + bob) -- 341
+			end -- 341
+			::__continue55:: -- 341
+		end -- 341
+		if not typing or idx < 0 then -- 341
+			return -- 343
+		end -- 343
+		typed = typed + dt * 31 -- 344
+		if typed >= textLen then -- 344
+			finishTyping() -- 345
+			return -- 345
+		end -- 345
+		local n = math.floor(typed) -- 346
+		do -- 346
+			local k = 0 -- 348
+			while k < n do -- 348
+				txChars[k + 1].visible = true -- 348
+				k = k + 1 -- 348
+			end -- 348
+		end -- 348
+		acc = acc + dt -- 349
+	end -- 331
+	root:schedule(function(dt) -- 351
+		update(dt) -- 351
+		return false -- 351
+	end) -- 351
+	return { -- 353
+		root = root, -- 354
+		close = function() -- 355
+			frame:destroy() -- 355
+		end, -- 355
+		isDone = function() return state == 2 end -- 356
+	} -- 356
 end -- 36
 return ____exports -- 36

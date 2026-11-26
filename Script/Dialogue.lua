@@ -2,8 +2,9 @@
 local ____lualib = require("lualib_bundle") -- 1
 local __TS__ArrayForEach = ____lualib.__TS__ArrayForEach -- 1
 local __TS__ArrayIndexOf = ____lualib.__TS__ArrayIndexOf -- 1
+local __TS__StringCharCodeAt = ____lualib.__TS__StringCharCodeAt -- 1
+local __TS__StringSubstr = ____lualib.__TS__StringSubstr -- 1
 local __TS__ArraySplice = ____lualib.__TS__ArraySplice -- 1
-local __TS__StringSubstring = ____lualib.__TS__StringSubstring -- 1
 local ____exports = {} -- 1
 local ____Dora = require("Dora") -- 12
 local Color = ____Dora.Color -- 13
@@ -883,272 +884,347 @@ function ____exports.createDialogue(root, opts) -- 87
 	pill.size = Size(102, 40) -- 539
 	pill.position = Vec2(SAY.x + 16, H - (SAY.y - 21)) -- 540
 	pill:addTo(sayGroup) -- 541
-	local whoLb = Label(MED .. ";15;true") -- 543
-	whoLb.color = C_CARD -- 544
-	whoLb.anchor = Vec2(0.5, 0.5) -- 545
-	whoLb.position = Vec2(SAY.x + 74, H - (SAY.y + 1)) -- 546
-	whoLb.spacing = 7 -- 547
-	whoLb.text = opts.speaker -- 548
-	whoLb:addTo(sayGroup) -- 549
-	local txLb = text( -- 553
-		sayGroup, -- 553
-		MED, -- 553
-		32, -- 553
-		C_INK, -- 553
-		SAY.x + PAD, -- 553
-		SAY.y + 56, -- 553
-		(SAY.w - PAD * 2) * CHAR_ADV, -- 554
-		14, -- 554
-		0 -- 554
-	) -- 554
-	txLb.text = "" -- 555
-	local seqLb = Label(REG .. ";15;true") -- 557
-	seqLb.color = Color(76, 99, 87, 190) -- 558
-	seqLb.outlineColor = Color(76, 99, 87, 190) -- 559
-	seqLb.outlineWidth = 0.04 -- 560
-	seqLb.anchor = Vec2(1, 1) -- 561
-	seqLb.position = Vec2(SAY.x + SAY.w - 22, H - (SAY.y + 26)) -- 562
-	seqLb:addTo(sayGroup) -- 563
-	local tipLb = Label(REG .. ";16;true") -- 565
-	tipLb.color = Color(36, 73, 70, 175) -- 566
-	tipLb.outlineColor = Color(36, 73, 70, 175) -- 567
-	tipLb.outlineWidth = 0.04 -- 568
-	tipLb.anchor = Vec2(1, 1) -- 569
-	tipLb.position = Vec2(SAY.x + SAY.w - 22, H - (SAY.y + SAY_H - 16)) -- 570
-	tipLb.text = "点击继续" -- 571
-	tipLb:addTo(sayGroup) -- 572
-	local S_IN = 0 -- 575
-	local S_TYPE = 1 -- 576
-	local S_HOLD = 2 -- 577
-	local S_NEXT = 3 -- 578
-	local S_OUT = 4 -- 579
-	local S_DONE = 5 -- 580
-	local st = S_IN -- 582
-	local t = 0 -- 583
-	local idx = -1 -- 584
-	local target = "" -- 585
-	local shown = 0 -- 586
-	local fxCur = nil -- 587
-	local pageT = 0 -- 588
-	local total = #opts.lines -- 590
-	local function setFx(fx) -- 592
-		fxCur = nil -- 593
-		__TS__ArrayForEach( -- 594
-			fxNodes, -- 594
-			function(____, f) -- 594
-				if fx ~= nil and f.name == fx then -- 594
-					f.node.visible = true -- 596
-					f.node.opacity = 0 -- 597
-					fxCur = f.node -- 598
-					if rulerLine ~= nil and f.node == fxRuler then -- 598
-						rulerLine.size = Size(0, 3) -- 599
-					end -- 599
-				else -- 599
-					f.node.visible = false -- 601
-					f.node.opacity = 0 -- 602
-				end -- 602
-			end -- 594
-		) -- 594
-	end -- 592
-	local function seqText(i) -- 607
-		local a = i + 1 -- 608
-		return ((((a < 10 and "0" or "") .. tostring(a)) .. " / ") .. (total < 10 and "0" or "")) .. tostring(total) -- 609
+	local whoLb = Label(((MED .. ";") .. tostring(math.floor(15 * SS + 0.5))) .. ";true") -- 545
+	whoLb.color = C_CARD -- 546
+	whoLb.anchor = Vec2(0.5, 0.5) -- 547
+	whoLb.scaleX = 1 / SS -- 548
+	whoLb.scaleY = 1 / SS -- 549
+	whoLb.position = Vec2(SAY.x + 74, H - (SAY.y + 1)) -- 550
+	whoLb.spacing = 7 * SS -- 551
+	whoLb.text = opts.speaker -- 552
+	whoLb:addTo(sayGroup) -- 553
+	local TX_SIZE = 32 -- 560
+	local TX_STEP = TX_SIZE * 0.78 + 1 -- 560
+	local TX_LINE = TX_SIZE + 14 -- 560
+	local TX_COLS = math.floor((SAY.w - PAD * 2) / TX_STEP) -- 561
+	local TX_N = TX_COLS * 3 -- 562
+	local txChars = {} -- 563
+	do -- 563
+		local i = 0 -- 564
+		while i < TX_N do -- 564
+			local lb = Label(((REG .. ";") .. tostring(math.floor(TX_SIZE * SS + 0.5))) .. ";true") -- 565
+			lb.color = C_INK -- 566
+			lb.anchor = Vec2(0, 1) -- 567
+			lb.scaleX = 1 / SS -- 568
+			lb.scaleY = 1 / SS -- 569
+			lb.visible = false -- 570
+			lb:addTo(sayGroup) -- 571
+			txChars[#txChars + 1] = lb -- 572
+			i = i + 1 -- 564
+		end -- 564
+	end -- 564
+	local txCount = 0 -- 574
+	local function toChars(str) -- 577
+		local out = {} -- 578
+		local i = 0 -- 579
+		while i < #str do -- 579
+			local c = __TS__StringCharCodeAt(str, i) -- 581
+			local n = 1 -- 582
+			if c >= 240 then -- 582
+				n = 4 -- 583
+			elseif c >= 224 then -- 583
+				n = 3 -- 584
+			elseif c >= 192 then -- 584
+				n = 2 -- 585
+			end -- 585
+			out[#out + 1] = __TS__StringSubstr(str, i, n) -- 586
+			i = i + n -- 587
+		end -- 587
+		return out -- 589
+	end -- 577
+	local function layoutLine(str) -- 593
+		local chars = toChars(str) -- 594
+		txCount = math.min(TX_N, #chars) -- 595
+		do -- 595
+			local i = 0 -- 596
+			while i < TX_N do -- 596
+				do -- 596
+					local lb = txChars[i + 1] -- 597
+					if i >= txCount then -- 597
+						lb.visible = false -- 598
+						goto __continue53 -- 598
+					end -- 598
+					local col = i % TX_COLS -- 599
+					local row = math.floor(i / TX_COLS) -- 600
+					lb.text = chars[i + 1] -- 601
+					lb.position = Vec2(SAY.x + PAD + col * TX_STEP, H - (SAY.y + 56 + row * TX_LINE)) -- 602
+					lb.visible = false -- 603
+				end -- 603
+				::__continue53:: -- 603
+				i = i + 1 -- 596
+			end -- 596
+		end -- 596
+	end -- 593
+	local function showChars(n) -- 607
+		do -- 607
+			local i = 0 -- 608
+			while i < txCount do -- 608
+				txChars[i + 1].visible = i < n -- 608
+				i = i + 1 -- 608
+			end -- 608
+		end -- 608
 	end -- 607
-	local function startLine(i) -- 612
-		idx = i -- 613
-		local L = opts.lines[i + 1] -- 614
-		target = L.text -- 615
-		shown = 0 -- 616
-		txLb.text = "" -- 617
-		txLb.opacity = 0 -- 618
-		seqLb.text = seqText(i) -- 619
-		setFx(L.fx) -- 620
-		setFace(L.ex) -- 621
-		t = 0 -- 622
-		st = S_TYPE -- 623
-	end -- 612
-	local function advance() -- 626
-		if openIdx >= 0 then -- 626
-			toggleCard(openIdx) -- 629
-			return -- 630
-		end -- 630
-		if st == S_TYPE then -- 630
-			shown = #target -- 634
-			txLb.text = target -- 635
-			txLb.opacity = 1 -- 636
-			st = S_HOLD -- 637
-			return -- 638
-		end -- 638
-		if st == S_HOLD then -- 638
-			if idx + 1 >= total then -- 638
-				st = S_OUT -- 642
-				t = 0 -- 643
-				return -- 644
-			end -- 644
-			st = S_NEXT -- 646
-			t = 0 -- 647
-		end -- 647
-	end -- 626
-	local function update(dt) -- 651
-		t = t + dt -- 652
-		pageT = pageT + dt -- 653
-		local talking = st == S_TYPE -- 657
-		local bob = talking and math.sin(pageT * 9.5) * 3.2 or math.sin(pageT * 1.57) * 2.4 -- 658
-		local ang = talking and math.sin(pageT * 6.7) * 0.55 or 0 -- 661
-		local sck = talking and 1 + math.sin(pageT * 6.7) * 0.008 or 1 -- 662
-		do -- 662
-			local i = 0 -- 663
-			while i < #faceSprites do -- 663
-				faceSprites[i + 1].position = Vec2(WZ_X + FACE_W / 2, WZ_Y + bob) -- 664
-				faceSprites[i + 1].angle = ang -- 665
-				faceSprites[i + 1].scaleX = sck -- 666
-				faceSprites[i + 1].scaleY = sck -- 667
-				i = i + 1 -- 663
-			end -- 663
-		end -- 663
-		do -- 663
-			local i = 0 -- 671
-			while i < #faceSprites do -- 671
-				local want = i == faceCur and 1 or 0 -- 672
-				local cur = faceSprites[i + 1].opacity -- 673
-				if math.abs(want - cur) > 0.01 then -- 673
-					faceSprites[i + 1].opacity = cur + (want - cur) * math.min(1, dt * 9) -- 675
-				else -- 675
-					faceSprites[i + 1].opacity = want -- 677
-				end -- 677
-				i = i + 1 -- 671
-			end -- 671
-		end -- 671
-		if openIdx >= 0 and cardAnim < 1 then -- 671
-			cardAnim = math.min(1, cardAnim + dt * 7.5) -- 683
-			local e = 1 - (1 - cardAnim) ^ 3 -- 684
-			cardNodes[openIdx + 1].opacity = e -- 685
-			cardNodes[openIdx + 1].position = Vec2(0, -10 * (1 - e)) -- 686
-		end -- 686
-		do -- 686
-			local i = #ripples - 1 -- 690
-			while i >= 0 do -- 690
-				local r = ripples[i + 1] -- 691
-				r.t = r.t + dt -- 692
-				local p = math.min(1, r.t / r.dur) -- 693
-				local d = r.d0 + (r.d1 - r.d0) * p -- 694
-				r.s.size = Size(d, d) -- 695
-				r.s.opacity = 1 - p -- 696
-				if p >= 1 then -- 696
-					r.s:removeFromParent() -- 698
-					__TS__ArraySplice(ripples, i, 1) -- 699
-				end -- 699
-				i = i - 1 -- 690
-			end -- 690
-		end -- 690
-		if st == S_IN then -- 690
-			introT = introT + dt -- 707
-			layer.opacity = math.min(1, introT / 0.26) -- 708
-			local function ease(t0, dur) -- 710
-				local k = math.min( -- 711
-					1, -- 711
-					math.max(0, (introT - t0) / dur) -- 711
-				) -- 711
-				return 1 - (1 - k) ^ 3 -- 712
-			end -- 710
-			local aH = ease(0.04, 0.42) -- 716
-			headGroup.opacity = aH -- 717
-			headGroup.position = Vec2(0, 16 * (1 - aH)) -- 718
-			local aS = ease(0.14, 0.62) -- 720
-			sceneGroup.opacity = aS -- 721
-			sceneGroup.position = Vec2(0, -22 * (1 - aS)) -- 722
-			local aW = ease(0.34, 0.58) -- 724
-			faceGroup.opacity = aW -- 725
-			faceGroup.position = Vec2(72 * (1 - aW), 0) -- 726
-			local aD = ease(0.56, 0.58) -- 728
-			sayGroup.opacity = aD -- 729
-			sayGroup.position = Vec2(0, -52 * (1 - aD)) -- 730
-			if introT >= 1.32 then -- 730
-				headGroup.position = Vec2(0, 0) -- 733
-				sceneGroup.position = Vec2(0, 0) -- 734
-				faceGroup.position = Vec2(0, 0) -- 735
-				sayGroup.position = Vec2(0, 0) -- 736
-				headGroup.opacity = 1 -- 737
-				sceneGroup.opacity = 1 -- 738
-				faceGroup.opacity = 1 -- 739
-				sayGroup.opacity = 1 -- 740
-				startLine(opts.startAt ~= nil and opts.startAt or 0) -- 741
-			end -- 741
-		elseif st == S_TYPE then -- 741
-			layer.opacity = 1 -- 745
-			txLb.opacity = math.min(1, t / FADE_IN_LINE) -- 746
-			local n = math.min( -- 749
-				#target, -- 749
-				math.max( -- 749
-					0, -- 749
-					math.floor((t - 0.14) / CPS) -- 749
-				) * CH_BYTES -- 749
-			) -- 749
-			if n > shown then -- 749
-				shown = n -- 751
-				txLb.text = __TS__StringSubstring(target, 0, n) -- 752
+	local function setTxOpacity(a) -- 610
+		do -- 610
+			local i = 0 -- 611
+			while i < txCount do -- 611
+				txChars[i + 1].opacity = a -- 611
+				i = i + 1 -- 611
+			end -- 611
+		end -- 611
+	end -- 610
+	local seqLb = Label(((REG .. ";") .. tostring(math.floor(15 * SS + 0.5))) .. ";true") -- 614
+	seqLb.color = Color(76, 99, 87, 190) -- 615
+	seqLb.outlineColor = Color(76, 99, 87, 190) -- 616
+	seqLb.outlineWidth = 0.04 -- 617
+	seqLb.anchor = Vec2(1, 1) -- 618
+	seqLb.scaleX = 1 / SS -- 619
+	seqLb.scaleY = 1 / SS -- 620
+	seqLb.position = Vec2(SAY.x + SAY.w - 22, H - (SAY.y + 26)) -- 621
+	seqLb:addTo(sayGroup) -- 622
+	local tipLb = Label(((REG .. ";") .. tostring(math.floor(16 * SS + 0.5))) .. ";true") -- 624
+	tipLb.color = Color(36, 73, 70, 175) -- 625
+	tipLb.outlineColor = Color(36, 73, 70, 175) -- 626
+	tipLb.outlineWidth = 0.04 -- 627
+	tipLb.anchor = Vec2(1, 1) -- 628
+	tipLb.scaleX = 1 / SS -- 629
+	tipLb.scaleY = 1 / SS -- 630
+	tipLb.position = Vec2(SAY.x + SAY.w - 22, H - (SAY.y + SAY_H - 16)) -- 631
+	tipLb.text = "点击继续" -- 632
+	tipLb:addTo(sayGroup) -- 633
+	local S_IN = 0 -- 636
+	local S_TYPE = 1 -- 637
+	local S_HOLD = 2 -- 638
+	local S_NEXT = 3 -- 639
+	local S_OUT = 4 -- 640
+	local S_DONE = 5 -- 641
+	local st = S_IN -- 643
+	local t = 0 -- 644
+	local idx = -1 -- 645
+	local target = "" -- 646
+	local shown = 0 -- 647
+	local fxCur = nil -- 648
+	local pageT = 0 -- 649
+	local total = #opts.lines -- 651
+	local function setFx(fx) -- 653
+		fxCur = nil -- 654
+		__TS__ArrayForEach( -- 655
+			fxNodes, -- 655
+			function(____, f) -- 655
+				if fx ~= nil and f.name == fx then -- 655
+					f.node.visible = true -- 657
+					f.node.opacity = 0 -- 658
+					fxCur = f.node -- 659
+					if rulerLine ~= nil and f.node == fxRuler then -- 659
+						rulerLine.size = Size(0, 3) -- 660
+					end -- 660
+				else -- 660
+					f.node.visible = false -- 662
+					f.node.opacity = 0 -- 663
+				end -- 663
+			end -- 655
+		) -- 655
+	end -- 653
+	local function seqText(i) -- 668
+		local a = i + 1 -- 669
+		return ((((a < 10 and "0" or "") .. tostring(a)) .. " / ") .. (total < 10 and "0" or "")) .. tostring(total) -- 670
+	end -- 668
+	local function startLine(i) -- 673
+		idx = i -- 674
+		local L = opts.lines[i + 1] -- 675
+		target = L.text -- 676
+		shown = 0 -- 677
+		layoutLine(target) -- 678
+		showChars(0) -- 679
+		setTxOpacity(0) -- 680
+		seqLb.text = seqText(i) -- 681
+		setFx(L.fx) -- 682
+		setFace(L.ex) -- 683
+		t = 0 -- 684
+		st = S_TYPE -- 685
+	end -- 673
+	local function advance() -- 688
+		if openIdx >= 0 then -- 688
+			toggleCard(openIdx) -- 691
+			return -- 692
+		end -- 692
+		if st == S_TYPE then -- 692
+			shown = txCount -- 696
+			showChars(txCount) -- 697
+			setTxOpacity(1) -- 698
+			st = S_HOLD -- 699
+			return -- 700
+		end -- 700
+		if st == S_HOLD then -- 700
+			if idx + 1 >= total then -- 700
+				st = S_OUT -- 704
+				t = 0 -- 705
+				return -- 706
+			end -- 706
+			st = S_NEXT -- 708
+			t = 0 -- 709
+		end -- 709
+	end -- 688
+	local function update(dt) -- 713
+		t = t + dt -- 714
+		pageT = pageT + dt -- 715
+		local talking = st == S_TYPE -- 719
+		local bob = talking and math.sin(pageT * 9.5) * 3.2 or math.sin(pageT * 1.57) * 2.4 -- 720
+		local ang = talking and math.sin(pageT * 6.7) * 0.55 or 0 -- 723
+		local sck = talking and 1 + math.sin(pageT * 6.7) * 0.008 or 1 -- 724
+		do -- 724
+			local i = 0 -- 725
+			while i < #faceSprites do -- 725
+				faceSprites[i + 1].position = Vec2(WZ_X + FACE_W / 2, WZ_Y + bob) -- 726
+				faceSprites[i + 1].angle = ang -- 727
+				faceSprites[i + 1].scaleX = sck -- 728
+				faceSprites[i + 1].scaleY = sck -- 729
+				i = i + 1 -- 725
+			end -- 725
+		end -- 725
+		do -- 725
+			local i = 0 -- 733
+			while i < #faceSprites do -- 733
+				local want = i == faceCur and 1 or 0 -- 734
+				local cur = faceSprites[i + 1].opacity -- 735
+				if math.abs(want - cur) > 0.01 then -- 735
+					faceSprites[i + 1].opacity = cur + (want - cur) * math.min(1, dt * 9) -- 737
+				else -- 737
+					faceSprites[i + 1].opacity = want -- 739
+				end -- 739
+				i = i + 1 -- 733
+			end -- 733
+		end -- 733
+		if openIdx >= 0 and cardAnim < 1 then -- 733
+			cardAnim = math.min(1, cardAnim + dt * 7.5) -- 745
+			local e = 1 - (1 - cardAnim) ^ 3 -- 746
+			cardNodes[openIdx + 1].opacity = e -- 747
+			cardNodes[openIdx + 1].position = Vec2(0, -10 * (1 - e)) -- 748
+		end -- 748
+		do -- 748
+			local i = #ripples - 1 -- 752
+			while i >= 0 do -- 752
+				local r = ripples[i + 1] -- 753
+				r.t = r.t + dt -- 754
+				local p = math.min(1, r.t / r.dur) -- 755
+				local d = r.d0 + (r.d1 - r.d0) * p -- 756
+				r.s.size = Size(d, d) -- 757
+				r.s.opacity = 1 - p -- 758
+				if p >= 1 then -- 758
+					r.s:removeFromParent() -- 760
+					__TS__ArraySplice(ripples, i, 1) -- 761
+				end -- 761
+				i = i - 1 -- 752
 			end -- 752
-			if t > 0.14 and shown >= #target then -- 752
-				txLb.text = target -- 755
-				st = S_HOLD -- 756
-			end -- 756
-		elseif st == S_HOLD then -- 756
-			layer.opacity = 1 -- 760
-			txLb.opacity = 1 -- 761
-		elseif st == S_NEXT then -- 761
-			txLb.opacity = math.max(0, 1 - t / FADE_OUT_LINE) -- 764
-			if t >= FADE_OUT_LINE then -- 764
-				startLine(idx + 1) -- 765
-			end -- 765
-		elseif st == S_OUT then -- 765
-			layer.opacity = math.max(0, 1 - t / FADE_OUT_ALL) -- 768
-			if t >= FADE_OUT_ALL then -- 768
-				st = S_DONE -- 770
-				opts:onFinish() -- 771
-			end -- 771
-		end -- 771
-		if fxCur ~= nil and fxCur.opacity < 1 then -- 771
-			fxCur.opacity = math.min(1, fxCur.opacity + dt * 2.6) -- 777
-			if rulerLine ~= nil and fxCur == fxRuler then -- 777
-				rulerLine.size = Size(920 * fxCur.opacity, 3) -- 779
-			end -- 779
-		end -- 779
-		do -- 779
-			local i = 0 -- 784
-			while i < #spotDots do -- 784
-				local k = 1 + math.sin(pageT * 2.2 + i * 1.4) * 0.12 -- 785
-				spotDots[i + 1].scaleX = k -- 786
-				spotDots[i + 1].scaleY = k -- 787
-				i = i + 1 -- 784
-			end -- 784
-		end -- 784
-	end -- 651
-	local function destroy() -- 791
-		layer:removeFromParent() -- 791
-	end -- 791
-	local function skip() -- 794
-		if st == S_DONE then -- 794
-			return -- 795
-		end -- 795
-		st = S_DONE -- 796
-		layer.opacity = 0 -- 797
-		opts:onFinish() -- 798
-	end -- 794
-	return { -- 801
-		next = function() -- 802
-			advance() -- 802
-		end, -- 802
-		tapAt = function(x, y) return tapAt(x, y) end, -- 803
-		update = function(dt) -- 804
-			update(dt) -- 804
-		end, -- 804
-		destroy = function() -- 805
-			destroy() -- 805
-		end, -- 805
-		isFinished = function() return st == S_DONE end, -- 806
-		skip = function() -- 807
-			skip() -- 807
-		end -- 807
-	} -- 807
+		end -- 752
+		if st == S_IN then -- 752
+			introT = introT + dt -- 769
+			layer.opacity = math.min(1, introT / 0.26) -- 770
+			local function ease(t0, dur) -- 772
+				local k = math.min( -- 773
+					1, -- 773
+					math.max(0, (introT - t0) / dur) -- 773
+				) -- 773
+				return 1 - (1 - k) ^ 3 -- 774
+			end -- 772
+			local aH = ease(0.04, 0.42) -- 778
+			headGroup.opacity = aH -- 779
+			headGroup.position = Vec2(0, 16 * (1 - aH)) -- 780
+			local aS = ease(0.14, 0.62) -- 782
+			sceneGroup.opacity = aS -- 783
+			sceneGroup.position = Vec2(0, -22 * (1 - aS)) -- 784
+			local aW = ease(0.34, 0.58) -- 786
+			faceGroup.opacity = aW -- 787
+			faceGroup.position = Vec2(72 * (1 - aW), 0) -- 788
+			local aD = ease(0.56, 0.58) -- 790
+			sayGroup.opacity = aD -- 791
+			sayGroup.position = Vec2(0, -52 * (1 - aD)) -- 792
+			if introT >= 1.32 then -- 792
+				headGroup.position = Vec2(0, 0) -- 795
+				sceneGroup.position = Vec2(0, 0) -- 796
+				faceGroup.position = Vec2(0, 0) -- 797
+				sayGroup.position = Vec2(0, 0) -- 798
+				headGroup.opacity = 1 -- 799
+				sceneGroup.opacity = 1 -- 800
+				faceGroup.opacity = 1 -- 801
+				sayGroup.opacity = 1 -- 802
+				startLine(opts.startAt ~= nil and opts.startAt or 0) -- 803
+			end -- 803
+		elseif st == S_TYPE then -- 803
+			layer.opacity = 1 -- 807
+			setTxOpacity(math.min(1, t / FADE_IN_LINE)) -- 808
+			local n = math.min( -- 810
+				txCount, -- 810
+				math.max( -- 810
+					0, -- 810
+					math.floor((t - 0.14) / CPS) -- 810
+				) -- 810
+			) -- 810
+			if n > shown then -- 810
+				shown = n -- 812
+				showChars(n) -- 813
+			end -- 813
+			if t > 0.14 and shown >= txCount then -- 813
+				showChars(txCount) -- 816
+				st = S_HOLD -- 817
+			end -- 817
+		elseif st == S_HOLD then -- 817
+			layer.opacity = 1 -- 821
+			setTxOpacity(1) -- 822
+		elseif st == S_NEXT then -- 822
+			setTxOpacity(math.max(0, 1 - t / FADE_OUT_LINE)) -- 825
+			if t >= FADE_OUT_LINE then -- 825
+				startLine(idx + 1) -- 826
+			end -- 826
+		elseif st == S_OUT then -- 826
+			layer.opacity = math.max(0, 1 - t / FADE_OUT_ALL) -- 829
+			if t >= FADE_OUT_ALL then -- 829
+				st = S_DONE -- 831
+				opts:onFinish() -- 832
+			end -- 832
+		end -- 832
+		if fxCur ~= nil and fxCur.opacity < 1 then -- 832
+			fxCur.opacity = math.min(1, fxCur.opacity + dt * 2.6) -- 838
+			if rulerLine ~= nil and fxCur == fxRuler then -- 838
+				rulerLine.size = Size(920 * fxCur.opacity, 3) -- 840
+			end -- 840
+		end -- 840
+		do -- 840
+			local i = 0 -- 845
+			while i < #spotDots do -- 845
+				local k = 1 + math.sin(pageT * 2.2 + i * 1.4) * 0.12 -- 846
+				spotDots[i + 1].scaleX = k -- 847
+				spotDots[i + 1].scaleY = k -- 848
+				i = i + 1 -- 845
+			end -- 845
+		end -- 845
+	end -- 713
+	local function destroy() -- 852
+		layer:removeFromParent() -- 852
+	end -- 852
+	local function skip() -- 855
+		if st == S_DONE then -- 855
+			return -- 856
+		end -- 856
+		st = S_DONE -- 857
+		layer.opacity = 0 -- 858
+		opts:onFinish() -- 859
+	end -- 855
+	return { -- 862
+		next = function() -- 863
+			advance() -- 863
+		end, -- 863
+		tapAt = function(x, y) return tapAt(x, y) end, -- 864
+		update = function(dt) -- 865
+			update(dt) -- 865
+		end, -- 865
+		destroy = function() -- 866
+			destroy() -- 866
+		end, -- 866
+		isFinished = function() return st == S_DONE end, -- 867
+		skip = function() -- 868
+			skip() -- 868
+		end -- 868
+	} -- 868
 end -- 87
 return ____exports -- 87

@@ -3309,104 +3309,108 @@ function ____exports.createLevel2Play(parent, opts) -- 114
 					end -- 1648
 					return true -- 1648
 				end -- 1648
-				if endT > 1.2 and not finished then -- 1648
-					finished = true -- 1649
-					opts:onFinish() -- 1649
-				end -- 1649
-				return true -- 1650
-			end -- 1650
-			if state ~= 1 then -- 1650
-				return false -- 1652
-			end -- 1652
-			if y < RM_T then -- 1652
+				return true -- 1651
+			end -- 1651
+			if state ~= 1 then -- 1651
 				return false -- 1653
 			end -- 1653
-			local best = 0 -- 1654
-			local bd = 1000000000 -- 1654
-			do -- 1654
-				local i = 0 -- 1655
-				while i < 3 do -- 1655
-					local d = math.abs(x - LANE_CX[i + 1]) -- 1656
-					if d < bd then -- 1656
-						bd = d -- 1657
-						best = i -- 1657
-					end -- 1657
-					i = i + 1 -- 1655
-				end -- 1655
-			end -- 1655
-			hit(best) -- 1659
-			return true -- 1660
+			if y < RM_T then -- 1653
+				return false -- 1654
+			end -- 1654
+			local best = 0 -- 1655
+			local bd = 1000000000 -- 1655
+			do -- 1655
+				local i = 0 -- 1656
+				while i < 3 do -- 1656
+					local d = math.abs(x - LANE_CX[i + 1]) -- 1657
+					if d < bd then -- 1657
+						bd = d -- 1658
+						best = i -- 1658
+					end -- 1658
+					i = i + 1 -- 1656
+				end -- 1656
+			end -- 1656
+			hit(best) -- 1660
+			return true -- 1661
 		end, -- 1617
-		hit = function(____, lane) -- 1662
-			hit(lane) -- 1662
-		end, -- 1662
-		skip = function() -- 1663
-			if state == 0 then -- 1663
-				beginPlay() -- 1664
-				return -- 1664
-			end -- 1664
-			if state == 2 then -- 1664
-				if not finished then -- 1664
-					finished = true -- 1666
-					opts:onFinish() -- 1666
-				end -- 1666
-				return -- 1667
-			end -- 1667
-			state = 2 -- 1669
-			wangzi.visible = false -- 1670
-			wangziLaugh.visible = true -- 1671
-			wangziLaugh.size = Size(300, 400) -- 1673
-			wangziLaugh.anchor = Vec2(0, 1) -- 1674
-			wangziLaugh.position = Vec2(856, H - 350) -- 1675
-			for ____, jl in ipairs(judgeLine) do -- 1676
-				jl.visible = false -- 1676
-			end -- 1676
-			hudRoot.visible = false -- 1677
-			plateRoot.visible = false -- 1678
-			endRoot.visible = true -- 1679
-			bannerTick.visible = false -- 1680
-			for ____, s in ipairs(knockTicks) do -- 1681
-				s.visible = false -- 1681
-			end -- 1681
-			endT = 0 -- 1682
-			syncEnd() -- 1683
+		hit = function(____, lane) -- 1663
+			hit(lane) -- 1663
 		end, -- 1663
-		isFinished = function() return state == 2 end, -- 1685
-		togglePause = function() -- 1686
-			if state ~= 1 then -- 1686
-				return -- 1687
+		skip = function() -- 1664
+			if paused then -- 1664
+				paused = false -- 1666
+				pauseRoot.visible = false -- 1666
+				Audio:setPauseAllCurrent(false) -- 1666
+			end -- 1666
+			if showSet then -- 1666
+				showSet = false -- 1667
+				setRoot.visible = false -- 1667
+			end -- 1667
+			if state == 0 then -- 1667
+				beginPlay() -- 1668
+				return -- 1668
+			end -- 1668
+			if state == 2 then -- 1668
+				if opts.onNext ~= nil then -- 1668
+					opts:onNext() -- 1672
+				end -- 1672
+				return -- 1673
+			end -- 1673
+			state = 2 -- 1675
+			wangzi.visible = false -- 1676
+			wangziLaugh.visible = true -- 1677
+			wangziLaugh.size = Size(300, 400) -- 1679
+			wangziLaugh.anchor = Vec2(0, 1) -- 1680
+			wangziLaugh.position = Vec2(856, H - 350) -- 1681
+			for ____, jl in ipairs(judgeLine) do -- 1682
+				jl.visible = false -- 1682
+			end -- 1682
+			hudRoot.visible = false -- 1683
+			plateRoot.visible = false -- 1684
+			endRoot.visible = true -- 1685
+			bannerTick.visible = false -- 1686
+			for ____, s in ipairs(knockTicks) do -- 1687
+				s.visible = false -- 1687
 			end -- 1687
-			paused = not paused -- 1688
-			pauseRoot.visible = paused -- 1689
-			Audio:setPauseAllCurrent(paused) -- 1692
-		end, -- 1686
-		dragTo = function(____, x, y) -- 1694
-			if not showSet then -- 1694
-				return false -- 1695
-			end -- 1695
-			local function at(v) -- 1696
-				return math.min( -- 1696
-					1, -- 1696
-					math.max(0, v) -- 1696
-				) -- 1696
-			end -- 1696
-			if y >= SET_Y + 30 and y <= SET_Y + 70 then -- 1696
-				audioBgm = at((x - IX) / IW) -- 1699
-				syncSet() -- 1700
-				return true -- 1701
+			endT = 0 -- 1688
+			syncEnd() -- 1689
+		end, -- 1664
+		isFinished = function() return state == 2 end, -- 1691
+		togglePause = function() -- 1692
+			if state ~= 1 then -- 1692
+				return -- 1693
+			end -- 1693
+			paused = not paused -- 1694
+			pauseRoot.visible = paused -- 1695
+			Audio:setPauseAllCurrent(paused) -- 1698
+		end, -- 1692
+		dragTo = function(____, x, y) -- 1700
+			if not showSet then -- 1700
+				return false -- 1701
 			end -- 1701
-			if y >= SET_Y + 96 and y <= SET_Y + 136 then -- 1701
-				audioSfx = at((x - IX) / IW) -- 1704
-				syncSet() -- 1705
-				return true -- 1706
-			end -- 1706
-			return false -- 1708
-		end, -- 1694
-		isPaused = function() return paused end, -- 1710
-		stats = function() return {hits, misses, maxCombo, suspPeak} end, -- 1711
-		setPanelOpen = function() return showSet end -- 1712
-	} -- 1712
-	print("[Level2Play] 开始") -- 1715
-	return play -- 1716
+			local function at(v) -- 1702
+				return math.min( -- 1702
+					1, -- 1702
+					math.max(0, v) -- 1702
+				) -- 1702
+			end -- 1702
+			if y >= SET_Y + 30 and y <= SET_Y + 70 then -- 1702
+				audioBgm = at((x - IX) / IW) -- 1705
+				syncSet() -- 1706
+				return true -- 1707
+			end -- 1707
+			if y >= SET_Y + 96 and y <= SET_Y + 136 then -- 1707
+				audioSfx = at((x - IX) / IW) -- 1710
+				syncSet() -- 1711
+				return true -- 1712
+			end -- 1712
+			return false -- 1714
+		end, -- 1700
+		isPaused = function() return paused end, -- 1716
+		stats = function() return {hits, misses, maxCombo, suspPeak} end, -- 1717
+		setPanelOpen = function() return showSet end -- 1718
+	} -- 1718
+	print("[Level2Play] 开始") -- 1721
+	return play -- 1722
 end -- 114
 return ____exports -- 114
